@@ -318,7 +318,7 @@
                     <label for="clientCount">Number of Clients:</label>
                     <input type="number" id="clientCount" min="1" max="1000" value="50" placeholder="Enter number of clients (e.g., 50)">
                     <small style="color: #6c757d; display: block; margin-top: 5px;">
-                        Based on 10 clients × 400 properties = 4000 record limit per batch
+                        Tool calculates optimal batch sizes based on 4000 total records per batch
                     </small>
                 </div>
 
@@ -479,9 +479,9 @@
                     return;
                 }
 
-                const batchSize = parseInt(document.getElementById('batchSize').value);
-                if (!batchSize || batchSize < 2) {
-                    this.showError('Please enter a valid number of batches (minimum 2).');
+                const clientCount = parseInt(document.getElementById('clientCount').value);
+                if (!clientCount || clientCount < 1) {
+                    this.showError('Please enter a valid number of clients (minimum 1).');
                     return;
                 }
 
@@ -490,28 +490,41 @@
 
                 try {
                     const { headers, rows } = this.csvData;
-                    const rowsPerBatch = Math.ceil(rows.length / batchSize);
-                    const actualBatches = Math.ceil(rows.length / rowsPerBatch);
-
+                    
+                    // Calculate optimal batch size based on 4000 record limit
+                    const maxRecordsPerBatch = 4000;
+                    const propertiesPerBatch = Math.floor(maxRecordsPerBatch / clientCount);
+                    
+                    if (propertiesPerBatch < 1) {
+                        this.showError(`Too many clients (${clientCount}). Maximum clients for this tool is ${maxRecordsPerBatch}.`);
+                        this.showProgress(false);
+                        return;
+                    }
+                    
+                    const totalBatches = Math.ceil(rows.length / propertiesPerBatch);
                     this.downloadUrls = [];
 
-                    for (let i = 0; i < actualBatches; i++) {
-                        const start = i * rowsPerBatch;
-                        const end = Math.min(start + rowsPerBatch, rows.length);
+                    for (let i = 0; i < totalBatches; i++) {
+                        const start = i * propertiesPerBatch;
+                        const end = Math.min(start + propertiesPerBatch, rows.length);
                         const batchRows = rows.slice(start, end);
 
                         const csvContent = this.createCSVContent(headers, batchRows);
                         const blob = new Blob([csvContent], { type: 'text/csv' });
                         const url = URL.createObjectURL(blob);
 
+                        const totalRecords = batchRows.length * clientCount;
+
                         this.downloadUrls.push({
                             url: url,
-                            filename: `${this.fileName}_batch_${i + 1}_of_${actualBatches}.csv`,
-                            rowCount: batchRows.length
+                            filename: `${this.fileName}_batch_${i + 1}_of_${totalBatches}.csv`,
+                            rowCount: batchRows.length,
+                            clientCount: clientCount,
+                            totalRecords: totalRecords
                         });
 
                         // Update progress
-                        const progress = ((i + 1) / actualBatches) * 100;
+                        const progress = ((i + 1) / totalBatches) * 100;
                         document.getElementById('progressFill').style.width = progress + '%';
                     }
 
@@ -554,7 +567,7 @@
                         <div class="download-item">
                             <div>
                                 <strong>${item.filename}</strong><br>
-                                <small>${item.rowCount} rows</small>
+                                <small>${item.rowCount} properties × ${item.clientCount} clients = ${item.totalRecords} total records</small>
                             </div>
                             <button class="download-button" onclick="csvSplitter.downloadFile(${index})">
                                 📥 Download
