@@ -266,6 +266,100 @@
             display: none;
         }
 
+        .autocomplete-wrapper {
+            position: relative;
+        }
+
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f3f4;
+            transition: background-color 0.2s ease;
+        }
+
+        .autocomplete-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item.highlighted {
+            background-color: #e3f2fd;
+        }
+
+        .excluded-properties {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff3e0;
+            border-radius: 8px;
+            border-left: 4px solid #ff9800;
+        }
+
+        .excluded-properties h4 {
+            margin-bottom: 10px;
+            color: #e65100;
+            font-size: 1em;
+        }
+
+        .excluded-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: white;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            border: 1px solid #ffcc02;
+        }
+
+        .excluded-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .excluded-address {
+            flex: 1;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .remove-excluded {
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .remove-excluded:hover {
+            background: #d32f2f;
+            transform: scale(1.1);
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 10px;
@@ -322,6 +416,22 @@
                     </small>
                 </div>
 
+                <div class="form-group">
+                    <label for="addressFilter">Exclude Properties (Optional):</label>
+                    <div class="autocomplete-wrapper">
+                        <input type="text" id="addressFilter" placeholder="Type an address to exclude..." disabled>
+                        <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+                    </div>
+                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                        Search and select properties to exclude from the matching process
+                    </small>
+                    
+                    <div class="excluded-properties" id="excludedProperties" style="display: none;">
+                        <h4>Excluded Properties:</h4>
+                        <div class="excluded-list" id="excludedList"></div>
+                    </div>
+                </div>
+
                 <button class="process-button" id="processButton" disabled>
                     Split CSV File
                 </button>
@@ -349,6 +459,9 @@
                 this.csvData = null;
                 this.fileName = '';
                 this.downloadUrls = [];
+                this.excludedProperties = new Set();
+                this.addressColumnIndex = null;
+                this.highlightedIndex = -1;
                 this.initializeEventListeners();
             }
 
@@ -356,6 +469,7 @@
                 const fileInput = document.getElementById('csvFile');
                 const uploadSection = document.getElementById('uploadSection');
                 const processButton = document.getElementById('processButton');
+                const addressFilter = document.getElementById('addressFilter');
 
                 // File input change
                 fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
@@ -381,6 +495,17 @@
 
                 // Process button
                 processButton.addEventListener('click', () => this.splitCSV());
+
+                // Address filter autocomplete
+                addressFilter.addEventListener('input', (e) => this.handleAddressSearch(e));
+                addressFilter.addEventListener('keydown', (e) => this.handleAddressKeydown(e));
+                
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.autocomplete-wrapper')) {
+                        this.hideAutocomplete();
+                    }
+                });
             }
 
             handleFileSelect(event) {
@@ -409,6 +534,8 @@
                 reader.onload = (e) => {
                     try {
                         this.csvData = this.parseCSV(e.target.result);
+                        this.findAddressColumn();
+                        this.enableAddressFilter();
                         document.getElementById('processButton').disabled = false;
                     } catch (error) {
                         this.showError('Error reading CSV file. Please check the file format.');
@@ -491,6 +618,12 @@
                 try {
                     const { headers, rows } = this.csvData;
                     
+                    // Filter out excluded properties
+                    const filteredRows = rows.filter(row => {
+                        const address = this.getRowAddress(row);
+                        return !this.excludedProperties.has(address);
+                    });
+                    
                     // Calculate optimal batch size based on 4000 record limit
                     const maxRecordsPerBatch = 4000;
                     const propertiesPerBatch = Math.floor(maxRecordsPerBatch / clientCount);
@@ -501,13 +634,15 @@
                         return;
                     }
                     
-                    const totalBatches = Math.ceil(rows.length / propertiesPerBatch);
+                    const totalBatches = Math.ceil(filteredRows.length / propertiesPerBatch);
                     this.downloadUrls = [];
+
+                    const excludedCount = rows.length - filteredRows.length;
 
                     for (let i = 0; i < totalBatches; i++) {
                         const start = i * propertiesPerBatch;
-                        const end = Math.min(start + propertiesPerBatch, rows.length);
-                        const batchRows = rows.slice(start, end);
+                        const end = Math.min(start + propertiesPerBatch, filteredRows.length);
+                        const batchRows = filteredRows.slice(start, end);
 
                         const csvContent = this.createCSVContent(headers, batchRows);
                         const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -631,6 +766,139 @@
 
             hideError() {
                 document.getElementById('errorMessage').style.display = 'none';
+            }
+
+            // Address filtering methods
+            findAddressColumn() {
+                const { headers } = this.csvData;
+                const possibleAddressColumns = ['ADDRESS', 'STREET', 'PROPERTY_ADDRESS', 'FULL_ADDRESS', 'ADDR'];
+                
+                for (const col of possibleAddressColumns) {
+                    const index = headers.findIndex(h => h.toUpperCase().includes(col));
+                    if (index !== -1) {
+                        this.addressColumnIndex = index;
+                        return;
+                    }
+                }
+                
+                // Default to first column if no obvious address column found
+                this.addressColumnIndex = 0;
+            }
+
+            enableAddressFilter() {
+                const addressFilter = document.getElementById('addressFilter');
+                addressFilter.disabled = false;
+                addressFilter.placeholder = `Search addresses from ${this.csvData.rows.length} properties...`;
+            }
+
+            getRowAddress(row) {
+                if (this.addressColumnIndex !== null && row[this.addressColumnIndex]) {
+                    return row[this.addressColumnIndex].trim();
+                }
+                return row.join(' | '); // Fallback to full row
+            }
+
+            handleAddressSearch(event) {
+                const query = event.target.value.trim().toLowerCase();
+                
+                if (query.length < 2) {
+                    this.hideAutocomplete();
+                    return;
+                }
+
+                const matches = this.csvData.rows
+                    .filter(row => {
+                        const address = this.getRowAddress(row);
+                        return address.toLowerCase().includes(query) && 
+                               !this.excludedProperties.has(address);
+                    })
+                    .slice(0, 10) // Limit to 10 suggestions
+                    .map(row => this.getRowAddress(row));
+
+                this.showAutocomplete(matches);
+            }
+
+            handleAddressKeydown(event) {
+                const dropdown = document.getElementById('autocompleteDropdown');
+                const items = dropdown.querySelectorAll('.autocomplete-item');
+
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    this.highlightedIndex = Math.min(this.highlightedIndex + 1, items.length - 1);
+                    this.updateHighlight(items);
+                } else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    this.highlightedIndex = Math.max(this.highlightedIndex - 1, -1);
+                    this.updateHighlight(items);
+                } else if (event.key === 'Enter') {
+                    event.preventDefault();
+                    if (this.highlightedIndex >= 0 && items[this.highlightedIndex]) {
+                        this.selectAddress(items[this.highlightedIndex].textContent);
+                    }
+                } else if (event.key === 'Escape') {
+                    this.hideAutocomplete();
+                }
+            }
+
+            showAutocomplete(matches) {
+                const dropdown = document.getElementById('autocompleteDropdown');
+                
+                if (matches.length === 0) {
+                    this.hideAutocomplete();
+                    return;
+                }
+
+                dropdown.innerHTML = matches.map(address => 
+                    `<div class="autocomplete-item" onclick="csvSplitter.selectAddress('${address.replace(/'/g, "\\'")}')">${address}</div>`
+                ).join('');
+                
+                dropdown.style.display = 'block';
+                this.highlightedIndex = -1;
+            }
+
+            updateHighlight(items) {
+                items.forEach((item, index) => {
+                    item.classList.toggle('highlighted', index === this.highlightedIndex);
+                });
+            }
+
+            hideAutocomplete() {
+                document.getElementById('autocompleteDropdown').style.display = 'none';
+                this.highlightedIndex = -1;
+            }
+
+            selectAddress(address) {
+                if (!this.excludedProperties.has(address)) {
+                    this.excludedProperties.add(address);
+                    this.updateExcludedList();
+                }
+                
+                // Clear the search input
+                document.getElementById('addressFilter').value = '';
+                this.hideAutocomplete();
+            }
+
+            removeExcludedAddress(address) {
+                this.excludedProperties.delete(address);
+                this.updateExcludedList();
+            }
+
+            updateExcludedList() {
+                const excludedSection = document.getElementById('excludedProperties');
+                const excludedList = document.getElementById('excludedList');
+                
+                if (this.excludedProperties.size === 0) {
+                    excludedSection.style.display = 'none';
+                    return;
+                }
+
+                excludedSection.style.display = 'block';
+                excludedList.innerHTML = Array.from(this.excludedProperties).map(address => 
+                    `<div class="excluded-item">
+                        <span class="excluded-address">${address}</span>
+                        <button class="remove-excluded" onclick="csvSplitter.removeExcludedAddress('${address.replace(/'/g, "\\'")}')" title="Remove">×</button>
+                    </div>`
+                ).join('');
             }
         }
 
