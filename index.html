@@ -634,8 +634,11 @@
             }
         }
 
-        // Initialize the application
-        const csvSplitter = new CSVSplitter();
+        // Initialize the application when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const csvSplitter = new CSVSplitter();
+            window.csvSplitter = csvSplitter; // Make it globally accessible for onclick handlers
+        });
     </script>
 </body>
 </html>
