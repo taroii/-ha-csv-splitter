@@ -388,7 +388,7 @@
 
         <div class="main-content">
             <div class="info-box">
-                <strong>How it works:</strong> Enter the number of clients you're processing. The tool will split your property CSV into batches that stay within Salesforce's computational limits (4000 total records per batch = clients × properties).
+                <strong>How it works:</strong> Enter the number of clients you're processing. The tool will split your property CSV into batches that stay within Salesforce's computational limits (3500 total records per batch = clients × properties).
             </div>
 
             <div class="upload-section" id="uploadSection">
@@ -412,7 +412,7 @@
                     <label for="clientCount">Number of Clients:</label>
                     <input type="number" id="clientCount" min="1" max="1000" value="50" placeholder="Enter number of clients (e.g., 50)">
                     <small style="color: #6c757d; display: block; margin-top: 5px;">
-                        Tool calculates optimal batch sizes based on 4000 total records per batch
+                        Tool calculates optimal batch sizes based on 3500 total records per batch
                     </small>
                 </div>
 
@@ -624,8 +624,8 @@
                         return !this.excludedProperties.has(address);
                     });
                     
-                    // Calculate optimal batch size based on 4000 record limit
-                    const maxRecordsPerBatch = 4000;
+                    // Calculate optimal batch size based on 3500 record limit
+                    const maxRecordsPerBatch = 3500;
                     const propertiesPerBatch = Math.floor(maxRecordsPerBatch / clientCount);
                     
                     if (propertiesPerBatch < 1) {
