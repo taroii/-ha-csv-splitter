@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Splitter Tool - Real Estate Property Processing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 3px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #667eea;
+            background: #e8ecff;
+            transform: scale(1.02);
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-input-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: none;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .upload-icon {
+            font-size: 1.5em;
+        }
+
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 8px;
+            color: #2d5a2d;
+            display: none;
+        }
+
+        .controls-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .process-button {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .process-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+
+        .process-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .results-header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+
+        .download-links {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 0 0 12px 12px;
+        }
+
+        .download-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .download-button {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-button:hover {
+            transform: scale(1.05);
+        }
+
+        .download-all-button {
+            background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .download-all-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .error-message {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+            color: #c62828;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 CSV Splitter Tool</h1>
+            <p>Split large property CSV files for Salesforce processing</p>
+        </div>
+
+        <div class="main-content">
+            <div class="info-box">
+                <strong>How it works:</strong> Enter the number of clients you're processing. The tool will split your property CSV into batches that stay within Salesforce's computational limits (4000 total records per batch = clients × properties).
+            </div>
+
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📄</div>
+                <h3>Upload Your CSV File</h3>
+                <p style="margin: 10px 0; color: #6c757d;">Drag and drop your CSV file here, or click to browse</p>
+                <div class="file-input-wrapper">
+                    <input type="file" class="file-input" id="csvFile" accept=".csv" />
+                    <button class="file-input-button">
+                        <span>📁</span>
+                        Choose CSV File
+                    </button>
+                </div>
+                <div class="file-info" id="fileInfo"></div>
+            </div>
+
+            <div class="error-message" id="errorMessage"></div>
+
+            <div class="controls-section">
+                <div class="form-group">
+                    <label for="clientCount">Number of Clients:</label>
+                    <input type="number" id="clientCount" min="1" max="1000" value="50" placeholder="Enter number of clients (e.g., 50)">
+                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                        Based on 10 clients × 400 properties = 4000 record limit per batch
+                    </small>
+                </div>
+
+                <button class="process-button" id="processButton" disabled>
+                    Split CSV File
+                </button>
+
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <div class="results-header">
+                    <h3>✅ Files Ready for Download</h3>
+                    <p>Upload each file separately to Salesforce to avoid timeout errors</p>
+                </div>
+                <div class="download-links" id="downloadLinks">
+                    <!-- Download links will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CSVSplitter {
+            constructor() {
+                this.csvData = null;
+                this.fileName = '';
+                this.downloadUrls = [];
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                const fileInput = document.getElementById('csvFile');
+                const uploadSection = document.getElementById('uploadSection');
+                const processButton = document.getElementById('processButton');
+
+                // File input change
+                fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+
+                // Drag and drop
+                uploadSection.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.add('dragover');
+                });
+
+                uploadSection.addEventListener('dragleave', () => {
+                    uploadSection.classList.remove('dragover');
+                });
+
+                uploadSection.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadSection.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        this.processFile(files[0]);
+                    }
+                });
+
+                // Process button
+                processButton.addEventListener('click', () => this.splitCSV());
+            }
+
+            handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.processFile(file);
+                }
+            }
+
+            processFile(file) {
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    this.showError('Please select a CSV file.');
+                    return;
+                }
+
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    this.showError('File size too large. Please select a file smaller than 5MB.');
+                    return;
+                }
+
+                this.fileName = file.name.replace('.csv', '');
+                this.showFileInfo(file);
+                this.hideError();
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        this.csvData = this.parseCSV(e.target.result);
+                        document.getElementById('processButton').disabled = false;
+                    } catch (error) {
+                        this.showError('Error reading CSV file. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            showFileInfo(file) {
+                const fileInfo = document.getElementById('fileInfo');
+                const fileSizeKB = (file.size / 1024).toFixed(1);
+                fileInfo.innerHTML = `
+                    <strong>File loaded:</strong> ${file.name}<br>
+                    <strong>Size:</strong> ${fileSizeKB} KB
+                `;
+                fileInfo.style.display = 'block';
+            }
+
+            parseCSV(csvText) {
+                const lines = csvText.trim().split('\n');
+                if (lines.length < 2) {
+                    throw new Error('CSV must have at least a header and one data row');
+                }
+
+                const headers = this.parseCSVLine(lines[0]);
+                const rows = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const row = this.parseCSVLine(lines[i]);
+                    if (row.length === headers.length) {
+                        rows.push(row);
+                    }
+                }
+
+                return { headers, rows };
+            }
+
+            parseCSVLine(line) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    
+                    if (char === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++; // Skip next quote
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === ',' && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                
+                result.push(current.trim());
+                return result;
+            }
+
+            splitCSV() {
+                if (!this.csvData) {
+                    this.showError('Please upload a CSV file first.');
+                    return;
+                }
+
+                const batchSize = parseInt(document.getElementById('batchSize').value);
+                if (!batchSize || batchSize < 2) {
+                    this.showError('Please enter a valid number of batches (minimum 2).');
+                    return;
+                }
+
+                this.showProgress(true);
+                this.clearPreviousDownloads();
+
+                try {
+                    const { headers, rows } = this.csvData;
+                    const rowsPerBatch = Math.ceil(rows.length / batchSize);
+                    const actualBatches = Math.ceil(rows.length / rowsPerBatch);
+
+                    this.downloadUrls = [];
+
+                    for (let i = 0; i < actualBatches; i++) {
+                        const start = i * rowsPerBatch;
+                        const end = Math.min(start + rowsPerBatch, rows.length);
+                        const batchRows = rows.slice(start, end);
+
+                        const csvContent = this.createCSVContent(headers, batchRows);
+                        const blob = new Blob([csvContent], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+
+                        this.downloadUrls.push({
+                            url: url,
+                            filename: `${this.fileName}_batch_${i + 1}_of_${actualBatches}.csv`,
+                            rowCount: batchRows.length
+                        });
+
+                        // Update progress
+                        const progress = ((i + 1) / actualBatches) * 100;
+                        document.getElementById('progressFill').style.width = progress + '%';
+                    }
+
+                    setTimeout(() => {
+                        this.showResults();
+                        this.showProgress(false);
+                    }, 500);
+
+                } catch (error) {
+                    this.showError('Error processing CSV file: ' + error.message);
+                    this.showProgress(false);
+                }
+            }
+
+            createCSVContent(headers, rows) {
+                const escapeCsvValue = (value) => {
+                    const stringValue = String(value);
+                    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                        return '"' + stringValue.replace(/"/g, '""') + '"';
+                    }
+                    return stringValue;
+                };
+
+                let content = headers.map(escapeCsvValue).join(',') + '\n';
+                
+                for (const row of rows) {
+                    content += row.map(escapeCsvValue).join(',') + '\n';
+                }
+                
+                return content;
+            }
+
+            showResults() {
+                const resultsSection = document.getElementById('resultsSection');
+                const downloadLinks = document.getElementById('downloadLinks');
+
+                let linksHTML = '';
+                this.downloadUrls.forEach((item, index) => {
+                    linksHTML += `
+                        <div class="download-item">
+                            <div>
+                                <strong>${item.filename}</strong><br>
+                                <small>${item.rowCount} rows</small>
+                            </div>
+                            <button class="download-button" onclick="csvSplitter.downloadFile(${index})">
+                                📥 Download
+                            </button>
+                        </div>
+                    `;
+                });
+
+                linksHTML += `
+                    <button class="download-all-button" onclick="csvSplitter.downloadAll()">
+                        📦 Download All Files
+                    </button>
+                `;
+
+                downloadLinks.innerHTML = linksHTML;
+                resultsSection.style.display = 'block';
+                resultsSection.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            downloadFile(index) {
+                const item = this.downloadUrls[index];
+                const link = document.createElement('a');
+                link.href = item.url;
+                link.download = item.filename;
+                link.click();
+            }
+
+            downloadAll() {
+                this.downloadUrls.forEach((item, index) => {
+                    setTimeout(() => this.downloadFile(index), index * 500);
+                });
+            }
+
+            clearPreviousDownloads() {
+                // Clean up previous blob URLs
+                this.downloadUrls.forEach(item => {
+                    URL.revokeObjectURL(item.url);
+                });
+                this.downloadUrls = [];
+                document.getElementById('resultsSection').style.display = 'none';
+            }
+
+            showProgress(show) {
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                
+                if (show) {
+                    progressBar.style.display = 'block';
+                    progressFill.style.width = '0%';
+                } else {
+                    progressBar.style.display = 'none';
+                }
+            }
+
+            showError(message) {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.textContent = message;
+                errorElement.style.display = 'block';
+                document.getElementById('processButton').disabled = true;
+            }
+
+            hideError() {
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+        }
+
+        // Initialize the application
+        const csvSplitter = new CSVSplitter();
+    </script>
+</body>
+</html>
