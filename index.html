@@ -388,7 +388,7 @@
 
         <div class="main-content">
             <div class="info-box">
-                <strong>How it works:</strong> Enter the number of clients you're processing. The tool will split your property CSV into batches that stay within Salesforce's computational limits (3500 total records per batch = clients × properties).
+                <strong>How it works:</strong> Set the number of properties per batch using the slider below. The tool will split your property CSV into manageable batches optimized for Salesforce processing with smart prefiltering.
             </div>
 
             <div class="upload-section" id="uploadSection">
@@ -409,10 +409,11 @@
 
             <div class="controls-section">
                 <div class="form-group">
-                    <label for="clientCount">Number of Clients:</label>
-                    <input type="number" id="clientCount" min="1" max="1000" value="50" placeholder="Enter number of clients (e.g., 50)">
+                    <label for="propertiesPerBatch">Properties per Batch:</label>
+                    <input type="range" id="propertiesPerBatch" min="25" max="300" value="100" style="width: 100%; margin-bottom: 10px;">
+                    <input type="number" id="propertiesPerBatchNumber" min="25" max="300" value="100" placeholder="Properties per batch" style="width: 80px; display: inline-block; margin-left: 10px;">
                     <small style="color: #6c757d; display: block; margin-top: 5px;">
-                        Tool calculates optimal batch sizes based on 3500 total records per batch
+                        Recommended: 100-150 properties per batch for optimal performance
                     </small>
                 </div>
 
@@ -470,6 +471,16 @@
                 const uploadSection = document.getElementById('uploadSection');
                 const processButton = document.getElementById('processButton');
                 const addressFilter = document.getElementById('addressFilter');
+                const propertiesPerBatchSlider = document.getElementById('propertiesPerBatch');
+                const propertiesPerBatchNumber = document.getElementById('propertiesPerBatchNumber');
+
+                // Sync slider and number input
+                propertiesPerBatchSlider.addEventListener('input', (e) => {
+                    propertiesPerBatchNumber.value = e.target.value;
+                });
+                propertiesPerBatchNumber.addEventListener('input', (e) => {
+                    propertiesPerBatchSlider.value = e.target.value;
+                });
 
                 // File input change
                 fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
@@ -606,9 +617,9 @@
                     return;
                 }
 
-                const clientCount = parseInt(document.getElementById('clientCount').value);
-                if (!clientCount || clientCount < 1) {
-                    this.showError('Please enter a valid number of clients (minimum 1).');
+                const propertiesPerBatch = parseInt(document.getElementById('propertiesPerBatch').value);
+                if (!propertiesPerBatch || propertiesPerBatch < 25) {
+                    this.showError('Please enter a valid number of properties per batch (minimum 25).');
                     return;
                 }
 
@@ -624,15 +635,7 @@
                         return !this.excludedProperties.has(address);
                     });
                     
-                    // Calculate optimal batch size based on 3500 record limit
-                    const maxRecordsPerBatch = 3500;
-                    const propertiesPerBatch = Math.floor(maxRecordsPerBatch / clientCount);
-                    
-                    if (propertiesPerBatch < 1) {
-                        this.showError(`Too many clients (${clientCount}). Maximum clients for this tool is ${maxRecordsPerBatch}.`);
-                        this.showProgress(false);
-                        return;
-                    }
+                    // Use the slider value directly for batch size
                     
                     const totalBatches = Math.ceil(filteredRows.length / propertiesPerBatch);
                     this.downloadUrls = [];
@@ -648,14 +651,10 @@
                         const blob = new Blob([csvContent], { type: 'text/csv' });
                         const url = URL.createObjectURL(blob);
 
-                        const totalRecords = batchRows.length * clientCount;
-
                         this.downloadUrls.push({
                             url: url,
                             filename: `${this.fileName}_batch_${i + 1}_of_${totalBatches}.csv`,
-                            rowCount: batchRows.length,
-                            clientCount: clientCount,
-                            totalRecords: totalRecords
+                            rowCount: batchRows.length
                         });
 
                         // Update progress
@@ -702,7 +701,7 @@
                         <div class="download-item">
                             <div>
                                 <strong>${item.filename}</strong><br>
-                                <small>${item.rowCount} properties × ${item.clientCount} clients = ${item.totalRecords} total records</small>
+                                <small>${item.rowCount} properties</small>
                             </div>
                             <button class="download-button" onclick="csvSplitter.downloadFile(${index})">
                                 📥 Download
